@@ -1,14 +1,14 @@
 var fs = require ('fs'), Jimp = require('jimp')
 
 
-let DIFF = 50
+let DIFF = 20
 let SIZE = 1.5
-let P_PIXELATE = 0.01
-let mainColor = {
-	r: 0,
-	g: 0,
-	b: 0
-}
+let P_PIXELATE = 0.0075
+let MAX_WIDTH = 1200
+let MAX_HEIGHT = 1200
+
+let inicio = new Date()
+let EMOJIS_PICTURES = { }
 
 
 function getPixels(img) {
@@ -36,7 +36,7 @@ function readJson(path) {
 
 function shuffle(a) {
     var j, x, i;
-    for (i = a.length - 1; i > 0; i--) {
+    for (i = Math.ceil(a.length - 1); i > 0; i--) {
         j = Math.floor(Math.random() * (i + 1));
         x = a[i];
         a[i] = a[j];
@@ -83,10 +83,10 @@ function pixelateLista(pixels, pixelate) {
 	return r
 }
 
-function isEmojiAdequado(emoji, secao) {
-	if (secao.color.r > emoji.avg[0] - DIFF && secao.color.r < emoji.avg[0] + DIFF) {
-		if (secao.color.g > emoji.avg[1] - DIFF && secao.color.g < emoji.avg[1] + DIFF) {
-			if (secao.color.b > emoji.avg[2] - DIFF && secao.color.b < emoji.avg[2] + DIFF) {
+function isEmojiAdequado(emoji, secao, diffLocal) {
+	if (secao.color.r > emoji.avg[0] - diffLocal && secao.color.r < emoji.avg[0] + diffLocal) {
+		if (secao.color.g > emoji.avg[1] - diffLocal && secao.color.g < emoji.avg[1] + diffLocal) {
+			if (secao.color.b > emoji.avg[2] - diffLocal && secao.color.b < emoji.avg[2] + diffLocal) {
 				return true
 			}
 		}
@@ -96,18 +96,24 @@ function isEmojiAdequado(emoji, secao) {
 
 function selecionarEmojis(avg, emojis) {
 	r = [ ]
-
+	let diffLocal = DIFF
 	avg.forEach(linha => {
+		let ultimoEmoji = null
 		linha.forEach(secao => {
 			emojis = shuffle(emojis)
-			let emojiFile = emojis[0].arquivo
+			let emojiFile = '!'
 			for(let i = 0; i < emojis.length; i++) {
 				let emoji = emojis[i]
-				if (isEmojiAdequado(emoji, secao)) {
+				if (isEmojiAdequado(emoji, secao, diffLocal) && emoji.arquivo !== ultimoEmoji) {
 					emojiFile = emoji.arquivo
 					i = emojis.length
 				}
 			}
+			if (emojiFile === '!') {
+				diffLocal++
+				emojiFile = emojis[0].arquivo
+			}
+			ultimoEmoji = emojiFile
 			r.push({
 				arquivo: emojiFile,
 				pos: {
@@ -125,14 +131,12 @@ function randomRange(min, max) {
 }
 
 function addEmoji(emoji, img, pixelate) {
+	let em = EMOJIS_PICTURES[emoji.arquivo]
 	return new Promise(resolve => {
-		Jimp.read('emojis\\' + emoji.arquivo)
-			.then(em => {
-				em.resize(Math.ceil(pixelate*SIZE), Math.ceil(pixelate*SIZE))
-				em.rotate(randomRange(0, 350))
-				img.blit(em, emoji.pos.x, emoji.pos.y)
-				resolve(img)
-			})
+		em.resize(Math.ceil(pixelate*SIZE), Math.ceil(pixelate*SIZE))
+		// em.rotate(randomRange(0, 350))
+		img.blit(em, emoji.pos.x, emoji.pos.y)
+		resolve(img)
 	})
 }
 
@@ -144,8 +148,10 @@ function addEmojis(emojis, w, h, pixelate, img) {
 		emojis.forEach(emoji => {
 			promises.push(addEmoji(emoji, img, pixelate))
 		})
+		console.log('%dms', new Date() - inicio)
 		Promise.all(promises).then(img => {
 			console.log(img)
+			console.log('%dms', new Date() - inicio)
 			resolve(img[0])
 		})
 	})
@@ -167,15 +173,66 @@ function transformarImg(img, pixelate) {
 	})
 }
 
-function main() {
-	Jimp.read('img.jpg')
-	.then(img => {
-		console.log(Math.ceil(img.bitmap.width * P_PIXELATE))
-		transformarImg(img, Math.ceil(img.bitmap.width * P_PIXELATE))
+function emojiToVar(emoji) {
+	return new Promise(resolve => {
+		Jimp.read('emojis\\' + emoji.arquivo)
 			.then(img => {
-				img.write('img-pos.jpg')
+				// img.quality(40)
+				EMOJIS_PICTURES[emoji.arquivo] = img
+				resolve(true)
 			})
 	})
+}
+
+function readEmojis(jsonEmojis) {
+	promises = [ ]
+	jsonEmojis.forEach(emoji => {
+		promises.push(emojiToVar(emoji))
+	})
+	return new Promise(resolve => {
+		Promise.all(promises)
+			.then(() => {
+				resolve(true)
+			})
+	})
+}
+
+function resize(img) {
+	let x = img.bitmap.width
+	let y = img.bitmap.height
+	if (x > MAX_WIDTH || y > MAX_HEIGHT) {
+		if (x < y) {
+			let aspectRatio = y/x
+			y = MAX_HEIGHT
+			x = Math.floor(y / aspectRatio)
+		} else {
+			let aspectRatio = x/y
+			x = MAX_WIDTH
+			y = Math.floor(x / aspectRatio)
+		}
+		img.resize(x, y)
+		return img
+	}
+	return img
+}
+
+function main() {
+	readEmojis(readJson('emojis.json'))
+		.then(() => {
+			let a = EMOJIS_PICTURES
+			console.log('%dms', new Date() - inicio)
+			Jimp.read('img.jpg')
+				.then(img => {
+					img = resize(img)
+					console.log(Math.ceil(img.bitmap.width * P_PIXELATE))
+					transformarImg(img, Math.ceil(img.bitmap.width * P_PIXELATE))
+						.then(img => {
+							img.quality(70)
+							img.write('img-pos.jpg')
+						})
+				})
+		})
+
 }
 
 
