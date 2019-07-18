@@ -314,7 +314,6 @@ function emojify(img, tweet, params) {
 	transformarImg(img, Math.ceil(img.bitmap.width * params.pixelate))
 		.then(img => {
 			img.quality(70)
-			img.write('img-pos.jpg')
 			console.log(2)
 			img.getBufferAsync(Jimp.MIME_JPEG)
 				.then(buffer => {
