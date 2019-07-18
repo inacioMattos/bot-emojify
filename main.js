@@ -1,4 +1,4 @@
-var fs = require ('fs'), Jimp = require('jimp')
+var fs = require ('fs'), Jimp = require('jimp'), Path = require('path')
 
 
 let DIFF = 20
@@ -175,7 +175,7 @@ function transformarImg(img, pixelate) {
 
 function emojiToVar(emoji) {
 	return new Promise(resolve => {
-		Jimp.read('emojis\\' + emoji.arquivo)
+		Jimp.read(Path.join('emojis', emoji.arquivo))
 			.then(img => {
 				// img.quality(40)
 				EMOJIS_PICTURES[emoji.arquivo] = img
