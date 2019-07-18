@@ -3,11 +3,11 @@ var probe = require('probe-image-size')
 
 let twitter = null
 
-let DIFF = 20
+let DIFF = 25
 let SIZE = 1.5
 let P_PIXELATE = 0.009
-let MAX_WIDTH = 1200
-let MAX_HEIGHT = 1200
+let MAX_WIDTH = 2600
+let MAX_HEIGHT = 2600
 
 let inicio = new Date()
 let EMOJIS_PICTURES = { }
@@ -97,17 +97,16 @@ function isEmojiAdequado(emoji, secao, diffLocal) {
 	return false
 }
 
-function selecionarEmojis(avg, emojis) {
+function selecionarEmojis(avg, emojis, params) {
 	r = [ ]
-	let diffLocal = DIFF
+	let diffLocal = params.diff
 	avg.forEach(linha => {
-		let ultimoEmoji = null
 		linha.forEach(secao => {
-			emojis = shuffle(emojis)
+			if (!params.retro) emojis = shuffle(emojis)
 			let emojiFile = '!'
 			for(let i = 0; i < emojis.length; i++) {
 				let emoji = emojis[i]
-				if (isEmojiAdequado(emoji, secao, diffLocal) && emoji.arquivo !== ultimoEmoji) {
+				if (isEmojiAdequado(emoji, secao, diffLocal)) {
 					emojiFile = emoji.arquivo
 					i = emojis.length
 				}
@@ -133,23 +132,23 @@ function randomRange(min, max) {
     return Math.random() * (max - min) + min;
 }
 
-function addEmoji(emoji, img, pixelate) {
+function addEmoji(emoji, img, pixelate, params) {
 	let em = EMOJIS_PICTURES[emoji.arquivo]
 	return new Promise(resolve => {
-		em.resize(Math.ceil(pixelate*SIZE), Math.ceil(pixelate*SIZE))
+		em.resize(Math.ceil(pixelate*params.emoji_size), Math.ceil(pixelate*params.emoji_size))
 		// em.rotate(randomRange(0, 350))
 		img.blit(em, emoji.pos.x, emoji.pos.y)
 		resolve(img)
 	})
 }
 
-function addEmojis(emojis, w, h, pixelate, img) {
+function addEmojis(emojis, w, h, pixelate, img, params) {
 	// img.pixelate(img.bitmap.width)
 	promises = [ ]
 	let emoji = emojis[0]
 	return new Promise(resolve => {
 		emojis.forEach(emoji => {
-			promises.push(addEmoji(emoji, img, pixelate))
+			promises.push(addEmoji(emoji, img, pixelate, params))
 		})
 		console.log('%dms', new Date() - inicio)
 		Promise.all(promises).then(img => {
@@ -167,9 +166,9 @@ function transformarImg(img, pixelate) {
 		avgImg = pixelateLista(pixels, pixelate)
 
 		emojis = readJson('emojis.json')
-		emojisSelecionados = selecionarEmojis(avgImg, emojis)
+		emojisSelecionados = selecionarEmojis(avgImg, emojis, params)
 
-		addEmojis(emojisSelecionados, img.bitmap.width, img.bitmap.height, pixelate, img)
+		addEmojis(emojisSelecionados, img.bitmap.width, img.bitmap.height, pixelate, img, params)
 			.then(img => {
 				resolve(img)
 			})
@@ -233,15 +232,30 @@ function getParams(txt) {
 		pixelate: P_PIXELATE,
 		emoji_size: SIZE,
 		width: MAX_WIDTH,
-		height: MAX_HEIGHT
+		height: MAX_HEIGHT,
+		retro: false,
+		diff: DIFF
 	}
 	try {
+		if (txt.indexOf(' retro') !== -1) {
+			params.pixelate = 0.0065
+			params.retro = true
+		}
 		if (txt.indexOf('detalhe ') !== -1) {
 			if (txt.indexOf('detalhe 0') !== -1) params.pixelate = 0.025
 			if (txt.indexOf('detalhe 1') !== -1) params.pixelate = 0.016
 			if (txt.indexOf('detalhe 2') !== -1) params.pixelate = 0.01
 			if (txt.indexOf('detalhe 4') !== -1) params.pixelate = 0.0085
 			if (txt.indexOf('detalhe 5') !== -1) params.pixelate = 0.008
+			if (txt.indexOf('detalhe 6') !== -1) params.pixelate = 0.007
+		}
+		if (txt.indexOf('pixelate ') !== -1) {
+			if (txt.indexOf('details 0') !== -1) params.pixelate = 0.025
+			if (txt.indexOf('details 1') !== -1) params.pixelate = 0.016
+			if (txt.indexOf('details 2') !== -1) params.pixelate = 0.01
+			if (txt.indexOf('details 4') !== -1) params.pixelate = 0.0085
+			if (txt.indexOf('details 5') !== -1) params.pixelate = 0.008
+			if (txt.indexOf('details 6') !== -1) params.pixelate = 0.007
 		}
 		if (txt.indexOf('max_wh ') !== -1) {
 			if (txt.indexOf('max_wh 0') !== -1) params.width = 1200
@@ -250,6 +264,14 @@ function getParams(txt) {
 			if (txt.indexOf('max_wh 3') !== -1) params.width = 2600
 			if (txt.indexOf('max_wh 99') !== -1) params.width = 9999
 			params.height = params.width
+		}
+		if (txt.indexOf('diff ') !== -1) {
+			if (txt.indexOf('diff 0') !== -1) params.diff = 10
+			if (txt.indexOf('diff 1') !== -1) params.diff = 15
+			if (txt.indexOf('diff 2') !== -1) params.diff = 20
+			if (txt.indexOf('diff 4') !== -1) params.diff = 30
+			if (txt.indexOf('diff 5') !== -1) params.diff = 40
+			if (txt.indexOf('diff 6') !== -1) params.diff = 50
 		}
 	} catch (error) {
 
@@ -284,9 +306,17 @@ function twitar(img, tweet) {
 		var mediaIdStr = data.media_id_string
 		var meta_params = { media_id: mediaIdStr }
 
+		let emojiStr = ''
+
+		try {
+			emojiStr = readJson('emojiString.json')[randomRange(0, readJson('emojiString.json').length - 1)]
+		} catch (error) {
+			error = 1
+		}
+
 		twitter.post('media/metadata/create', meta_params, function (err, data, response) {
 		  if (!err) {
-			var params = { status: '@' + tweet.user.screen_name + ' Oi ' + tweet.user.name + '!', media_ids: [mediaIdStr], in_reply_to_status_id: tweet.id }
+			var params = { status: '@' + tweet.user.screen_name + ' ' + emojiStr, media_ids: [mediaIdStr], in_reply_to_status_id: tweet.id_str }
 
 			twitter.post('statuses/update', params, function (err, data, response) {
 				console.log('postei!')
@@ -311,7 +341,7 @@ function getTwitter() {
 function emojify(img, tweet, params) {
 	img = resize(img, params)
 	console.log(Math.ceil(img.bitmap.width * params.pixelate))
-	transformarImg(img, Math.ceil(img.bitmap.width * params.pixelate))
+	transformarImg(img, Math.ceil(img.bitmap.width * params.pixelate), params)
 		.then(img => {
 			img.quality(70)
 			console.log(2)
