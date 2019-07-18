@@ -1,14 +1,17 @@
-var fs = require ('fs'), Jimp = require('jimp'), Path = require('path')
+var fs = require ('fs'), Jimp = require('jimp'), Path = require('path'), Twit = require ('twit'), request = require('request').defaults({ encoding: null })
+var probe = require('probe-image-size')
 
+let twitter = null
 
 let DIFF = 20
 let SIZE = 1.5
-let P_PIXELATE = 0.0075
+let P_PIXELATE = 0.009
 let MAX_WIDTH = 1200
 let MAX_HEIGHT = 1200
 
 let inicio = new Date()
 let EMOJIS_PICTURES = { }
+
 
 
 function getPixels(img) {
@@ -197,17 +200,17 @@ function readEmojis(jsonEmojis) {
 	})
 }
 
-function resize(img) {
+function resize(img, params) {
 	let x = img.bitmap.width
 	let y = img.bitmap.height
-	if (x > MAX_WIDTH || y > MAX_HEIGHT) {
+	if (x > params.width || y > params.height) {
 		if (x < y) {
 			let aspectRatio = y/x
-			y = MAX_HEIGHT
+			y = params.height
 			x = Math.floor(y / aspectRatio)
 		} else {
 			let aspectRatio = x/y
-			x = MAX_WIDTH
+			x = params.width
 			y = Math.floor(x / aspectRatio)
 		}
 		img.resize(x, y)
@@ -216,21 +219,122 @@ function resize(img) {
 	return img
 }
 
+function getImage(url) {
+	return new Promise(resolve => {
+		Jimp.read(url)
+			.then(img => {
+				resolve (img)
+			})
+	})
+}
+
+function getParams(txt) {
+	let params = {
+		pixelate: P_PIXELATE,
+		emoji_size: SIZE,
+		width: MAX_WIDTH,
+		height: MAX_HEIGHT
+	}
+	try {
+		if (txt.indexOf('detalhe ') !== -1) {
+			if (txt.indexOf('detalhe 0') !== -1) params.pixelate = 0.025
+			if (txt.indexOf('detalhe 1') !== -1) params.pixelate = 0.016
+			if (txt.indexOf('detalhe 2') !== -1) params.pixelate = 0.01
+			if (txt.indexOf('detalhe 4') !== -1) params.pixelate = 0.0085
+			if (txt.indexOf('detalhe 5') !== -1) params.pixelate = 0.008
+		}
+		if (txt.indexOf('max_wh ') !== -1) {
+			if (txt.indexOf('max_wh 0') !== -1) params.width = 1200
+			if (txt.indexOf('max_wh 1') !== -1) params.width = 1400
+			if (txt.indexOf('max_wh 2') !== -1) params.width = 1800
+			if (txt.indexOf('max_wh 3') !== -1) params.width = 2600
+			if (txt.indexOf('max_wh 99') !== -1) params.width = 9999
+			params.height = params.width
+		}
+	} catch (error) {
+
+	}
+
+	return params
+}
+
+function mentionEvent(tweet) {
+	try {
+		if (tweet.entities.media.length > 0) {
+			params = getParams(tweet.text)
+			let url = tweet.entities.media[0].media_url
+			return new Promise(resolve => {
+				getImage(url)
+					.then(img => {
+						emojify(img, tweet, params)
+						resolve(1)
+					})
+			})
+		}
+	} catch (error) {
+		console.log('[XXX] ERRO [XXX}')
+		console.log(error)
+	}
+}
+
+function twitar(img, tweet) {
+	twitter.post('media/upload', { media_data: img }, function (err, data, response) {
+		// now we can assign alt text to the media, for use by screen readers and
+		// other text-based presentations and interpreters
+		var mediaIdStr = data.media_id_string
+		var meta_params = { media_id: mediaIdStr }
+
+		twitter.post('media/metadata/create', meta_params, function (err, data, response) {
+		  if (!err) {
+			var params = { status: '@' + tweet.user.screen_name + ' Oi ' + tweet.user.name + '!', media_ids: [mediaIdStr], in_reply_to_status_id: tweet.id }
+
+			twitter.post('statuses/update', params, function (err, data, response) {
+				console.log('postei!')
+			})
+		  }
+		})
+	})
+}
+
+function getTwitter() {
+	let keys = readJson(Path.join('twitter_keys', 'keys.json'))
+	twitter = new Twit({
+		consumer_key:         keys.key,
+		consumer_secret:      keys.secret,
+		access_token:         keys.token,
+		access_token_secret:  keys.token_secret,
+		timeout_ms:           60*1000,
+		strictSSL:            true,
+	  })
+}
+
+function emojify(img, tweet, params) {
+	img = resize(img, params)
+	console.log(Math.ceil(img.bitmap.width * params.pixelate))
+	transformarImg(img, Math.ceil(img.bitmap.width * params.pixelate))
+		.then(img => {
+			img.quality(70)
+			img.write('img-pos.jpg')
+			console.log(2)
+			img.getBufferAsync(Jimp.MIME_JPEG)
+				.then(buffer => {
+					console.log(2)
+					let base64 = buffer.toString('base64')
+					console.log('indo postar tweet!')
+					twitar(base64, tweet)
+					console.log(2)
+				})
+		})
+}
+
 function main() {
 	readEmojis(readJson('emojis.json'))
 		.then(() => {
-			let a = EMOJIS_PICTURES
+			getTwitter()
+			let stream = twitter.stream('statuses/filter', { track: '@emojify1' })
+			stream.on('tweet', mentionEvent)
+			console.log('Começaaaaaaaando!')
 			console.log('%dms', new Date() - inicio)
-			Jimp.read('img.jpg')
-				.then(img => {
-					img = resize(img)
-					console.log(Math.ceil(img.bitmap.width * P_PIXELATE))
-					transformarImg(img, Math.ceil(img.bitmap.width * P_PIXELATE))
-						.then(img => {
-							img.quality(70)
-							img.write('img-pos.jpg')
-						})
-				})
 		})
 
 }

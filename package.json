@@ -10,6 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "get-pixels": "^3.3.2",
-    "jimp": "^0.6.4"
+    "jimp": "^0.6.4",
+    "probe-image-size": "^4.1.1",
+    "twit": "^2.2.11"
   }
 }
