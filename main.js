@@ -308,11 +308,7 @@ function twitar(img, tweet) {
 
 		let emojiStr = ''
 
-		try {
-			emojiStr = readJson('emojiString.json')[randomRange(0, readJson('emojiString.json').length - 1)]
-		} catch (error) {
-			error = 1
-		}
+
 
 		twitter.post('media/metadata/create', meta_params, function (err, data, response) {
 		  if (!err) {
