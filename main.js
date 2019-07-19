@@ -238,7 +238,7 @@ function getParams(txt) {
 	}
 	try {
 		if (txt.indexOf(' retro') !== -1) {
-			params.pixelate = 0.0065
+			params.pixelate = 0.009
 			params.retro = true
 		}
 		if (txt.indexOf('detalhe ') !== -1) {
