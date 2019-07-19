@@ -5,7 +5,7 @@ let twitter = null
 
 let DIFF = 25
 let SIZE = 1.5
-let P_PIXELATE = 0.008
+let P_PIXELATE = 0.009
 let MAX_WIDTH = 2600
 let MAX_HEIGHT = 2600
 let MIN_WIDTH = 900
@@ -154,7 +154,6 @@ function addEmojis(emojis, w, h, pixelate, img, params) {
 		})
 		console.log('%dms', new Date() - inicio)
 		Promise.all(promises).then(img => {
-			console.log(img)
 			console.log('%dms', new Date() - inicio)
 			resolve(img[0])
 		})
