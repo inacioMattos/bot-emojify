@@ -133,7 +133,7 @@ function randomRange(min, max) {
 }
 
 function addEmoji(emoji, img, pixelate, params) {
-	let em = EMOJIS_PICTURES[emoji.arquivo]
+	let em = EMOJIS_PICTURES[emoji.arquivo].clone()
 	return new Promise(resolve => {
 		em.resize(Math.ceil(pixelate*params.emoji_size), Math.ceil(pixelate*params.emoji_size))
 		// em.rotate(randomRange(0, 350))
