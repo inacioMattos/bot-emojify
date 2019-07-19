@@ -223,11 +223,11 @@ function resize(img, params) {
 	} else if (x < MIN_WIDTH || y < MIN_HEIGHT) {
 		if (x > y) {
 			let aspectRatio = y/x
-			y = MIN_HEIGHT * 1.4
+			y = MIN_HEIGHT
 			x = Math.floor(y / aspectRatio)
 		} else {
 			let aspectRatio = x/y
-			x = MIN_WIDTH * 1.4
+			x = MIN_WIDTH
 			y = Math.floor(x / aspectRatio)
 		}
 		img.resize(x, y)
