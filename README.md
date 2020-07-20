@@ -21,7 +21,9 @@ Podemos dividir a lógica em duas principais etapas: pixalizar a imagem e seleci
 Basicamente, o algoritmo todo gira em torno da cor média de cada seção e cada emoji, por exemplo: se temos uma determinada seção de 10x10px com 4 valores (RGBA) para cada um dos 100 pixels, é somado cada um desses 300 valores (pois o canal Alpha é ignorado) e é feito uma média desses valores. Digamos por exemplo que o resultado seja: (103, 45, 244), o algoritmo procura dentro de um JSON um emoji com cor média semelhante a essa obtida desta seção da imagem. Naturalmente, a chance de haver um emoji com a exata cor média de (103, 45, 244) é muito pequena, por isso é utilizado um parametro interno DIFF que determina a diferença possível de média de cor que é aceita. Para quem curiodade, a DIFF é em torno de 25.
 
 ## Como rodar no meu computador?
-É bem fácil, basta clonar esse repositório e adicionar uma pasta chamada "twitter_keys" e dentro dela um JSON com as APIs keys da tua conta do twitter. Tem vários tutorias na internet mostrando como conseguir suas keys da API do Twitter.
+Tem duas maneiras: localmente ou emulando o seu próprio bot no twitter.
+Para rodar localmente, basta baixar o arquivo 'emojify.js' e colocar a foto desejada na mesma pasta com o nome 'img.jpg'.
+Já para rodar como seu próprio bot no Twitter é bem fácil, basta clonar esse repositório e adicionar uma pasta chamada "twitter_keys" e dentro dela um JSON com as APIs keys da tua conta do twitter. Tem vários tutorias na internet mostrando como conseguir suas keys da API do Twitter.
 Depois disso, é só rodar o clássico 'npm install' e depois 'node main.js'.
 
 ## Suspensão do Twitter
