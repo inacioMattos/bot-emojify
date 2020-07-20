@@ -22,7 +22,7 @@ Basicamente, o algoritmo todo gira em torno da cor média de cada seção e cada
 
 ## Como rodar no meu computador?
 Tem duas maneiras: localmente ou emulando o seu próprio bot no twitter.
-Para rodar localmente, basta baixar o arquivo 'emojify.js' e colocar a foto desejada na mesma pasta com o nome 'img.jpg'.
+Para rodar localmente, basta baixar dar clone neste repositório e colocar a foto desejada na mesma pasta com o nome 'img.jpg' e rodar o comando 'node emojify.js'.
 Já para rodar como seu próprio bot no Twitter é bem fácil, basta clonar esse repositório e adicionar uma pasta chamada "twitter_keys" e dentro dela um JSON com as APIs keys da tua conta do twitter. Tem vários tutorias na internet mostrando como conseguir suas keys da API do Twitter.
 Depois disso, é só rodar o clássico 'npm install' e depois 'node main.js'.
 
